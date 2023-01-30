@@ -4,27 +4,30 @@ import "time"
 
 var Lock = Unit{}
 
-type Mutex struct {
+type RMutex struct {
 	ch chan Unit
 }
 
-func NewMutex() Mutex {
-	return Mutex{
-		ch: make(chan Unit, 1),
+func NewRMutex(max int) RMutex {
+    if max < 1 {
+        max = 1
+    }
+	return RMutex{
+		ch: make(chan Unit, max),
 	}
 }
 
 
-func (m Mutex) Lock() Mutex {
+func (m RMutex) Lock() RMutex {
 	m.ch <- Lock
     return m
 }
 
-func (m Mutex) Unlock() {
+func (m RMutex) Unlock() {
 	<-m.ch
 }
 
-func (m Mutex) TryLock() bool {
+func (m RMutex) TryLock() bool {
     select {
     case m.ch <- Lock:
         return true
@@ -33,7 +36,7 @@ func (m Mutex) TryLock() bool {
     }
 }
 
-func (m Mutex) LockWithTimeout(t time.Duration) bool {
+func (m RMutex) LockWithTimeout(t time.Duration) bool {
     select {
     case m.ch <- Lock:
         return true
@@ -42,7 +45,7 @@ func (m Mutex) LockWithTimeout(t time.Duration) bool {
     }
 }
 
-func (m Mutex) LockChan() chan<- Unit {
+func (m RMutex) LockChan() chan<- Unit {
 	return m.ch
 }
 
