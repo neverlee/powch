@@ -2,8 +2,6 @@ package powch
 
 import "time"
 
-var Lock = Unit{}
-
 type RMutex struct {
 	ch chan Unit
 }
