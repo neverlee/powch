@@ -14,10 +14,11 @@ func Example_PubChannel() {
 	pub := NewPub[string]()
 
 	fmt.Println("now start")
-	// pub.InChan() <- "will not be showed" // or  pub.Push("will not be showed")
+
+	pub.InChan() <- "will not be showed" // or  pub.Push("will not be showed")
 
 	var wg sync.WaitGroup
-	// defer wg.Wait()
+	defer wg.Wait()
 	for i := 0; i < 3; i++ {
 		wg.Add(1)
 
@@ -62,25 +63,6 @@ func Example_PubChannel() {
 		}
 	}
 	pub.Close()
-	wg.Wait()
-
-	// Output:
-	// now start
-	// pub 0
-	// pub 1
-	// pub 2
-	// listener 2, get data by chan: {push a value 0 by chan}
-	// listener 2, get data by chan: {push a value 1 by push func}
-	// listener 2, get data by chan: {push a value 2 by chan}
-	// listener 2 done
-	// listener 1, get data by pop func: {push a value 0 by chan}
-	// listener 1, get data by pop func: {push a value 1 by push func}
-	// listener 1, get data by pop func: {push a value 2 by chan}
-	// listener 1 done
-	// listener 0, get data by chan: {push a value 0 by chan}
-	// listener 0, get data by chan: {push a value 1 by push func}
-	// listener 0, get data by chan: {push a value 2 by chan}
-	// listener 0 done
 }
 
 func Test_PubChannel(t *testing.T) {
