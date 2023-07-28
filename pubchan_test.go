@@ -2,6 +2,8 @@ package powch
 
 import (
 	"fmt"
+	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,56 +13,102 @@ func Example_PubChannel() {
 	// create a pub channel
 	pub := NewPub[string]()
 
-	// create some listener
-	l1 := pub.Listen()
-	l2 := pub.Listen()
+	fmt.Println("now start")
+	// pub.InChan() <- "will not be showed" // or  pub.Push("will not be showed")
 
-	// now you can publish data by this channel
-	pub.InChan() <- "one" // or  pub.Push("one")
+	var wg sync.WaitGroup
+	// defer wg.Wait()
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
 
-	{
-		d, ok := l1.Pop()
-		fmt.Println("l1 get", d, ok)
+		// create a listener
+		l := pub.Listen()
+		go func(id int, l Listener[string]) {
+			defer wg.Done()
+
+			use_chan := id%2 == 0
+			if use_chan {
+				for {
+					if n, ok := <-l.OutChan(); ok {
+						d := l.Done(n)
+						fmt.Printf("listener %d, get data by chan: {%v}\n", id, d)
+					} else {
+						fmt.Printf("listener %d done\n", id)
+						break
+					}
+				}
+			} else {
+				for {
+					if d, ok := l.Pop(); ok {
+						fmt.Printf("listener %d, get data by pop func: {%v}\n", id, d)
+					} else {
+						fmt.Printf("listener %d done\n", id)
+						break
+					}
+				}
+			}
+		}(i, l)
 	}
-	{
-		if n, ok := <-l2.OutChan(); ok {
-			d := l2.Done(n)
-			fmt.Println("l2 get", d, ok)
+
+	runtime.Gosched()
+	// now you can publish data by this channel
+	for i := 0; i < 3; i++ {
+		use_chan := i%2 == 0
+		fmt.Println("pub", i)
+		if use_chan {
+			pub.InChan() <- fmt.Sprintf("push a value %d by chan", i)
+		} else {
+			pub.Push(fmt.Sprintf("push a value %d by push func", i))
 		}
 	}
+	pub.Close()
+	wg.Wait()
 
 	// Output:
-	// one true
-	// one true
-
-	pub.Close()
+	// now start
+	// pub 0
+	// pub 1
+	// pub 2
+	// listener 2, get data by chan: {push a value 0 by chan}
+	// listener 2, get data by chan: {push a value 1 by push func}
+	// listener 2, get data by chan: {push a value 2 by chan}
+	// listener 2 done
+	// listener 1, get data by pop func: {push a value 0 by chan}
+	// listener 1, get data by pop func: {push a value 1 by push func}
+	// listener 1, get data by pop func: {push a value 2 by chan}
+	// listener 1 done
+	// listener 0, get data by chan: {push a value 0 by chan}
+	// listener 0, get data by chan: {push a value 1 by push func}
+	// listener 0, get data by chan: {push a value 2 by chan}
+	// listener 0 done
 }
 
 func Test_PubChannel(t *testing.T) {
 	pub := NewPub[any]()
 
-	r := pub.Listen()
+	l1 := pub.Listen()
 
 	pub.Push("hello")
 
 	{
-		d, ok := r.Pop()
+		d, ok := l1.Pop()
 		assert.Equal(t, "hello", d)
 		assert.Equal(t, true, ok)
 	}
 
-	r1 := pub.Listen()
+	l2 := pub.Listen()
 
 	pub.Push(123)
 
 	{
-		d, ok := r.Pop()
+		n, ok := <-l1.OutChan()
+		d := l1.Done(n)
 		assert.Equal(t, 123, d)
 		assert.Equal(t, true, ok)
 	}
 
 	{
-		d, ok := r1.Pop()
+		d, ok := l2.Pop()
 		assert.Equal(t, 123, d)
 		assert.Equal(t, true, ok)
 	}
@@ -68,12 +116,14 @@ func Test_PubChannel(t *testing.T) {
 	pub.Close()
 
 	{
-		_, ok := r.Pop()
+		n, ok := <-l1.OutChan()
+		d := l1.Done(n)
+		assert.Nil(t, d)
 		assert.Equal(t, false, ok)
 	}
 
 	{
-		_, ok := r1.Pop()
+		_, ok := l2.Pop()
 		assert.Equal(t, false, ok)
 	}
 }
