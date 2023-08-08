@@ -48,7 +48,7 @@ func Test_Deque(t *testing.T) {
 	assert.Equal(t, 2, <-dq.BoutChan())
 
 	assert.False(t, dq.closed)
-	dq.Close()
+	dq.Close(false)
 	runtime.Gosched()
 	assert.True(t, dq.closed)
 	assert.True(t, dq.loopEnd)

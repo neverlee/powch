@@ -4,6 +4,7 @@ import (
 	"github.com/neverlee/powch/container/list"
 )
 
+// Deque a bouble linkedlist channel
 type Deque[T any] struct {
 	lst     *list.List[T]
 	fin     chan T
@@ -15,6 +16,7 @@ type Deque[T any] struct {
 	max     int
 }
 
+// NewDeque returns a deque channel
 func NewDeque[T any](max int) *Deque[T] {
 	dq := &Deque[T]{
 		lst:     list.New[T](),
@@ -100,12 +102,14 @@ func (dq *Deque[T]) BoutChan() <-chan T {
 	return dq.bout
 }
 
-func (dq *Deque[T]) Close() {
+func (dq *Deque[T]) Close(withClean bool) {
 	close(dq.fin)
+	if withClean {
+		dq.Clean()
+	}
 }
 
-func (dq *Deque[T]) CloseAndClean() {
-	close(dq.fin)
+func (dq *Deque[T]) Clean() {
 	for range dq.FoutChan() {
 	}
 }
