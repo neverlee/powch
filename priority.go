@@ -2,22 +2,22 @@ package powch
 
 import "github.com/neverlee/powch/container/heap"
 
-type PriorityQueue[T any] struct {
+type Priority[T any] struct {
 	h       *heap.Heap[T]
 	ich     chan T
 	och     chan T
 	max     int
 	closed  bool
-	loopEnd bool
+	loopEnd bool // nouse, just for test
 }
 
-func NewPriorityQueue[T any](max int, less func(a, b T) bool) *PriorityQueue[T] {
+func NewPriority[T any](max int, less func(a, b T) bool) *Priority[T] {
 	initSize := max
 	if initSize < 0 {
 		initSize = 0
 	}
 
-	pq := &PriorityQueue[T]{
+	pq := &Priority[T]{
 		h:   heap.NewHeap[T](initSize, less),
 		ich: make(chan T, 0),
 		och: make(chan T, 0),
@@ -27,7 +27,7 @@ func NewPriorityQueue[T any](max int, less func(a, b T) bool) *PriorityQueue[T] 
 	return pq
 }
 
-func (pq *PriorityQueue[T]) loop() {
+func (pq *Priority[T]) loop() {
 	var te, to T
 	var in, out chan T
 	for {
@@ -70,22 +70,22 @@ func (pq *PriorityQueue[T]) loop() {
 	pq.loopEnd = true
 }
 
-func (pq *PriorityQueue[T]) InChan() chan<- T {
+func (pq *Priority[T]) InChan() chan<- T {
 	return pq.ich
 }
 
-func (pq *PriorityQueue[T]) OutChan() <-chan T {
+func (pq *Priority[T]) OutChan() <-chan T {
 	return pq.och
 }
 
-func (pq *PriorityQueue[T]) Close(withClean bool) {
+func (pq *Priority[T]) Close(withClean bool) {
 	close(pq.ich)
 	if withClean {
 		pq.Clean()
 	}
 }
 
-func (pq *PriorityQueue[T]) Clean() {
+func (pq *Priority[T]) Clean() {
 	for range pq.OutChan() {
 	}
 }

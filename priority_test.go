@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_PriorityQueue(t *testing.T) {
-	pq := NewPriorityQueue[int](10, func(a, b int) bool {
+func Test_Priority(t *testing.T) {
+	pq := NewPriority[int](10, func(a, b int) bool {
 		return a > b
 	})
 
@@ -23,8 +23,8 @@ func Test_PriorityQueue(t *testing.T) {
 	pq.Close(true)
 }
 
-func Test_PriorityQueue2(t *testing.T) {
-	pq := NewPriorityQueue[int](4, func(a, b int) bool {
+func Test_Priority2(t *testing.T) {
+	pq := NewPriority[int](4, func(a, b int) bool {
 		return a > b
 	})
 	assert.Equal(t, 0, pq.h.Len())
