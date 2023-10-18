@@ -80,19 +80,20 @@ func (l *Listener[T]) Pop() (T, bool) {
 	return v, ok
 }
 
-// CaseOut returns the receiver channel that you can get data from it.
-// You shoud always call CaseDone to finish the operation
+// CaseOut returns the receiver channel that you should only use it in select clause.
+// You should always recall CaseOut in each loop
+// You should always call CaseDone to finish the operation
 func (l *Listener[T]) CaseOut() <-chan *BNode[T] {
 	return l.currc
 }
 
 // CaseDone unwrap and finish the operation
 // if you get a node from CaseOut, even though you don't need the v, you still need to call CaseDone
-func (l *Listener[T]) CaseDone(b *BNode[T]) (ret T) {
+func (l *Listener[T]) CaseDone(b *BNode[T]) (ret T, ok bool) {
 	if b == nil {
 		return
 	}
-	ret = b.v
+	ret, ok = b.v, true
 	l.currc <- b
 	l.currc = b.nextc
 	return
@@ -102,13 +103,17 @@ func (l *Listener[T]) CaseDone(b *BNode[T]) (ret T) {
 // if f returns false, range stops the iteration.
 func (l *Listener[T]) Range(f func(v T) bool) {
 	for {
-		bn, ok := <-l.CaseOut()
+		v, ok := l.CaseDone(<-l.CaseOut())
 		if !ok {
 			return
 		}
-		v := l.CaseDone(bn)
 		if !f(v) {
 			break
 		}
 	}
+}
+
+// returns a new Listener with the same position
+func (l *Listener[T]) Clone() Listener[T] {
+	return Listener[T]{currc: l.currc}
 }

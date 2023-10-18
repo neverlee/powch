@@ -22,15 +22,14 @@ func Example_Publish() {
 	wg.Add(3)
 
 	// create a listener
+	l := pub.Listen()
 	{
-		id, l := 0, pub.Listen()
 		go func(id int, l Listener[string]) {
 			defer wg.Done()
 			for {
 				select {
-				case n, ok := <-l.CaseOut():
-					if ok {
-						d := l.CaseDone(n)
+				case n := <-l.CaseOut():
+					if d, ok := l.CaseDone(n); ok {
 						fmt.Printf("listener %d, get data by chan: {%v}\n", id, d)
 					} else {
 						fmt.Printf("listener %d done\n", id)
@@ -38,11 +37,10 @@ func Example_Publish() {
 					}
 				}
 			}
-		}(id, l)
+		}(0, l.Clone())
 	}
 
 	{
-		id, l := 1, pub.Listen()
 		go func(id int, l Listener[string]) {
 			defer wg.Done()
 			for {
@@ -53,11 +51,10 @@ func Example_Publish() {
 					break
 				}
 			}
-		}(id, l)
+		}(1, l.Clone())
 	}
 
 	{
-		id, l := 2, pub.Listen()
 		go func(id int, l Listener[string]) {
 			defer wg.Done()
 			fmt.Printf("listener %d done\n", id)
@@ -66,8 +63,7 @@ func Example_Publish() {
 				return true
 			})
 			fmt.Printf("listener %d done\n", id)
-
-		}(id, l)
+		}(2, l.Clone())
 	}
 
 	// You should not use it like these
@@ -75,13 +71,13 @@ func Example_Publish() {
 		{
 			l := pub.Listen()
 
-			// one
+			// one: use it in for range
 			for bn := range l.CaseOut() {
 				v := l.CaseDone(bn)
 				// ...
 			}
 
-			// two
+			// two: use the chan var in a loop
 			ch := l.CaseOut()
 			for {
 				bn := <-ch
@@ -89,7 +85,7 @@ func Example_Publish() {
 				// ...
 			}
 
-			// three without CaseDone
+			// three: without CaseDone
 			for {
 				<-l.CaseOut()
 				// ...
@@ -129,8 +125,7 @@ func Test_Publish(t *testing.T) {
 	pub.Push(123)
 
 	{
-		n, ok := <-l1.CaseOut()
-		d := l1.CaseDone(n)
+		d, ok := l1.CaseDone(<-l1.CaseOut())
 		assert.Equal(t, 123, d)
 		assert.Equal(t, true, ok)
 	}
@@ -144,8 +139,7 @@ func Test_Publish(t *testing.T) {
 	pub.Close()
 
 	{
-		n, ok := <-l1.CaseOut()
-		d := l1.CaseDone(n)
+		d, ok := l1.CaseDone(<-l1.CaseOut())
 		assert.Nil(t, d)
 		assert.Equal(t, false, ok)
 	}
