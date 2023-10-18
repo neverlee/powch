@@ -10,7 +10,7 @@ import (
 )
 
 func Example_Publish() {
-	// create a pub channel
+	// create a publish channel
 	pub := NewPublish[string]()
 
 	fmt.Println("now start")

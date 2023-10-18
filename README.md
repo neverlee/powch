@@ -13,6 +13,7 @@ go get github.com/neverlee/powch
 # Powerful channels
 * Mutex a Mutex that is more powerful than sync.Mutex
 * Rlimit a multiple lock that can used to limit concurrency
-* Pub a boradcast channel
-* Deque a double-ended channel
-* PriorityQueue a priority queue channel
+* Publish a boradcast channel
+* Deque a double-ended queue channel
+* Priority a priority queue channel
+* Dedud a deduplication queue channel

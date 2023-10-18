@@ -1,11 +1,32 @@
 package powch
 
 import (
+	"fmt"
 	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func Example_Prioirty() {
+	// create a pub channel
+	pri := NewPriority[int](10, func(a, b int) bool {
+		return a < b
+	})
+
+	ich := pri.InChan()
+	indata := []int{1, 2, 2, 4, 1, 3, 5, 7}
+	for _, d := range indata {
+		ich <- d
+	}
+	pri.Close(false)
+
+	for d := range pri.OutChan() {
+		fmt.Print(d, ",")
+	}
+	// Output:
+	// 1,1,2,2,3,4,5,7,
+}
 
 func Test_Priority(t *testing.T) {
 	pq := NewPriority[int](10, func(a, b int) bool {
