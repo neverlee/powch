@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package sync
+package syncmap
 
 import (
 	"sync"
@@ -10,29 +10,29 @@ import (
 	"unsafe"
 )
 
-// Map is like a Go map[interface{}]interface{} but is safe for concurrent use
+// SyncMap is like a Go map[interface{}]interface{} but is safe for concurrent use
 // by multiple goroutines without additional locking or coordination.
 // Loads, stores, and deletes run in amortized constant time.
 //
-// The Map type is specialized. Most code should use a plain Go map instead,
+// The SyncMap type is specialized. Most code should use a plain Go map instead,
 // with separate locking or coordination, for better type safety and to make it
 // easier to maintain other invariants along with the map content.
 //
-// The Map type is optimized for two common use cases: (1) when the entry for a given
+// The SyncMap type is optimized for two common use cases: (1) when the entry for a given
 // key is only ever written once but read many times, as in caches that only grow,
 // or (2) when multiple goroutines read, write, and overwrite entries for disjoint
-// sets of keys. In these two cases, use of a Map may significantly reduce lock
+// sets of keys. In these two cases, use of a SyncMap may significantly reduce lock
 // contention compared to a Go map paired with a separate Mutex or RWMutex.
 //
-// The zero Map is empty and ready for use. A Map must not be copied after first use.
+// The zero SyncMap is empty and ready for use. A SyncMap must not be copied after first use.
 //
-// In the terminology of the Go memory model, Map arranges that a write operation
+// In the terminology of the Go memory model, SyncMap arranges that a write operation
 // “synchronizes before” any read operation that observes the effect of the write, where
 // read and write operations are defined as follows.
 // Load, LoadAndDelete, LoadOrStore are read operations;
 // Delete, LoadAndDelete, and Store are write operations;
 // and LoadOrStore is a write operation when it returns loaded set to false.
-type Map[K comparable, V any] struct {
+type SyncMap[K comparable, V any] struct {
 	mu sync.Mutex
 
 	// read contains the portion of the map's contents that are safe for
@@ -108,7 +108,7 @@ func newEntry[V any](i V) *entry[V] {
 // Load returns the value stored in the map for a key, or nil if no
 // value is present.
 // The ok result indicates whether value was found in the map.
-func (m *Map[K, V]) Load(key K) (value V, ok bool) {
+func (m *SyncMap[K, V]) Load(key K) (value V, ok bool) {
 	read, _ := m.read.Load().(readOnly[K, V])
 	e, ok := read.m[key]
 	if !ok && read.amended {
@@ -146,7 +146,7 @@ func (e *entry[V]) load() (value V, ok bool) {
 }
 
 // Store sets the value for a key.
-func (m *Map[K, V]) Store(key K, value V) {
+func (m *SyncMap[K, V]) Store(key K, value V) {
 	read, _ := m.read.Load().(readOnly[K, V])
 	if e, ok := read.m[key]; ok && e.tryStore(&value) {
 		return
@@ -209,7 +209,7 @@ func (e *entry[V]) storeLocked(i *V) {
 // LoadOrStore returns the existing value for the key if present.
 // Otherwise, it stores and returns the given value.
 // The loaded result is true if the value was loaded, false if stored.
-func (m *Map[K, V]) LoadOrStore(key K, value V) (actual V, loaded bool) {
+func (m *SyncMap[K, V]) LoadOrStore(key K, value V) (actual V, loaded bool) {
 	// Avoid locking if it's a clean hit.
 	read, _ := m.read.Load().(readOnly[K, V])
 	if e, ok := read.m[key]; ok {
@@ -282,7 +282,7 @@ func (e *entry[V]) tryLoadOrStore(i V) (actual V, loaded, ok bool) {
 
 // LoadAndDelete deletes the value for a key, returning the previous value if any.
 // The loaded result reports whether the key was present.
-func (m *Map[K, V]) LoadAndDelete(key K) (value V, loaded bool) {
+func (m *SyncMap[K, V]) LoadAndDelete(key K) (value V, loaded bool) {
 	read, _ := m.read.Load().(readOnly[K, V])
 	e, ok := read.m[key]
 	if !ok && read.amended {
@@ -308,7 +308,7 @@ func (m *Map[K, V]) LoadAndDelete(key K) (value V, loaded bool) {
 }
 
 // Delete deletes the value for a key.
-func (m *Map[K, V]) Delete(key K) {
+func (m *SyncMap[K, V]) Delete(key K) {
 	m.LoadAndDelete(key)
 }
 
@@ -337,7 +337,7 @@ func (e *entry[V]) delete() (value V, ok bool) {
 //
 // Range may be O(N) with the number of elements in the map even if f returns
 // false after a constant number of calls.
-func (m *Map[K, V]) Range(f func(key K, value V) bool) {
+func (m *SyncMap[K, V]) Range(f func(key K, value V) bool) {
 	// We need to be able to iterate over all of the keys that were already
 	// present at the start of the call to Range.
 	// If read.amended is false, then read.m satisfies that property without
@@ -370,7 +370,7 @@ func (m *Map[K, V]) Range(f func(key K, value V) bool) {
 	}
 }
 
-func (m *Map[K, V]) missLocked() {
+func (m *SyncMap[K, V]) missLocked() {
 	m.misses++
 	if m.misses < len(m.dirty) {
 		return
@@ -380,7 +380,7 @@ func (m *Map[K, V]) missLocked() {
 	m.misses = 0
 }
 
-func (m *Map[K, V]) dirtyLocked() {
+func (m *SyncMap[K, V]) dirtyLocked() {
 	if m.dirty != nil {
 		return
 	}
